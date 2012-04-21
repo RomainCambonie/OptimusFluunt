@@ -67,30 +67,46 @@ void Flot::display() const
 
 void Flot::executeBloch()
 {
-	// On met le flot de tous les arcs à 0.
-	for(map<string, map<string, Arc> >::iterator it = m_matAdj.begin(); it != m_matAdj.end(); ++it)
+	map<string, set<string> > usableArcs; //Liste des arcs practicables
+	list<string> path;
+	string keyStart, keyEnd;
+
+	//Liste des arcs praticables
+	for (map<string, map<string, Arc> >::const_iterator it = m_matAdj.begin(); it != m_matAdj.end(); it++)
 	{
-		for (map<string, Arc>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+		for (map<string, Arc>::const_iterator it2 = it->second.begin(); it2 != it->second.end(); it2++)
 		{
-			(it2->second).setFlot(0);
+				if (it2->second.getCapacite() - it2->second.getFlot() > 0)
+					usableArcs[it->first].insert(it2->first);
 		}
 	}
+	//TODO nettoyage des arcs non praticables
 
-	unsigned int capResiMin = getCapaciteMax();
-	string keyDep, keyArr;
-
-	for(map<string, map<string, Arc> >::iterator it = m_matAdj.begin(); it != m_matAdj.end(); ++it)
+	//Itérations de l'algorithme
+	while (!usableArcs.empty())
 	{
-		for (map<string, Arc>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+		// On choisi l'arc avec la plus faible capacité résiduelle
+		unsigned int minResCap = UINT_MAX;
+		for(map<string, set<string> >::iterator it = usableArcs.begin(); it != usableArcs.end(); it++)
 		{
-			unsigned int comp = (it2->second).getCapacite() - (it2->second).getFlot();
-			if (comp < capResiMin)
+			for (set<string>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++)
 			{
-				capResiMin = comp;
-				keyDep = it->first;
-				keyArr = it2->first;
+				unsigned int resCap = m_matAdj[it->first][*it2].getCapacite() - m_matAdj[it->first][*it2].getFlot();
+				if (resCap < minResCap)
+				{
+					minResCap = resCap;
+					keyEnd = it->first;
+					keyStart = *it2;
+				}
 			}
 		}
+
+		//On détermine un chemin de E à S passant par l'arc et on met à jour le flot
+		path = blochSearchPath(m_somEntree, keyStart, usableArcs);
+		list<string> tempPath = blochSearchPath(keyEnd, m_somSortie, usableArcs);
+		path.splice(path.end(), tempPath);
+
+		//Elimination des circuits, etc
 	}
 }
 
@@ -109,4 +125,49 @@ unsigned int Flot::getCapaciteMax()
 			if ((it2->second).getCapacite() > capMax) capMax = (it2->second).getCapacite();
 	}
 	return capMax;
+}
+
+list<string> Flot::blochSearchPath(const string start, const string end, map<string, set<string> > usableArcs)
+{
+	list<string> path;
+	map<string, map<string, Arc>::iterator > exploredVertices;
+
+	path.push_back(start);
+	exploredVertices[start] = m_matAdj[start].begin();
+
+	while (path.back() != end)
+	{
+		bool goOn = true;
+		//Choix de l'arc praticable suivant
+		while ((exploredVertices[path.back()] != m_matAdj[path.back()].end()) && goOn)
+		{
+			if (usableArcs[path.back()].count(exploredVertices[path.back()]->first) == 0)
+				exploredVertices[path.back()]++;
+			else
+				goOn = false;
+		}
+		//Si c'est un cul-de-sac, on dépile
+		if (exploredVertices[path.back()] == m_matAdj[path.back()].end())
+		{
+			path.pop_back();
+			if(!path.size())
+				return path;
+			else if (exploredVertices[path.back()] != m_matAdj[path.back()].end())
+				exploredVertices[path.back()]++;
+		}
+		//Sinon, on empile
+		else
+		{
+			path.push_back(exploredVertices[path.back()]->first);
+			if (exploredVertices.count(path.back()))
+			{
+				if (exploredVertices[path.back()] != m_matAdj[path.back()].end())
+					exploredVertices[path.back()]++;
+			}
+			else
+				exploredVertices[path.back()] = m_matAdj[path.back()].begin();
+		}
+	}
+
+	return path;
 }

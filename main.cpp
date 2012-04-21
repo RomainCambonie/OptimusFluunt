@@ -8,5 +8,7 @@ int main(int argc, char*argv[])
 	cin >> filename;
 	Flot test(filename);
 	test.display();
+	test.executeBloch();
+	test.display();
 	cout << "Fin du programme." << endl;
 }

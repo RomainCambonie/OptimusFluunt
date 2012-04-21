@@ -3,7 +3,12 @@
 
 #include <string>
 #include <map>
+#include <list>
+#include <set>
+#include <climits>
+
 #include "arc.h"
+
 using namespace std;
 
 class Flot
@@ -50,6 +55,13 @@ private:
 	string m_somSortie;
 	unsigned int m_nbSommets; // Nb de sommets dans le flot
 	map<string, map<string, Arc> > m_matAdj; // Stockage du flot sous forme de graphe (matrice d'adjacence)
+
+	/**
+		 * @brief: Recherche d'un chemin de 'start' à 'end' en passant par les arcs spécifiés
+		 * @param[in]:sommet de départ, sommet d'arrivée, arcs autorisés
+		 * @return:
+		 */
+	list<string> blochSearchPath(const string start, const string end, map<string, set<string> > usableArcs);
 };
 
 #endif /* FLOT2_H_ */
